@@ -45,7 +45,6 @@ public class TaskService {
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
-
         Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
 
         // جلب مهام المستخدم الحالي فقط
@@ -96,4 +95,4 @@ public class TaskService {
 
         return taskMapper.toResponseDto(taskRepository.save(task));
     }
-}
+}
