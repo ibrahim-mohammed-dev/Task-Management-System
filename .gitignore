@@ -1,22 +1,40 @@
-HELP.md
-target/
-.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
+# ==========================================
+# Backend Ignore Rules (Spring Boot / Maven)
+# ==========================================
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+backend/src/main/resources/application.properties
+backend/*.log
+backend/*.env
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-src/main/resources/application.properties
-*.log
-*.env
-### IntelliJ IDEA ###
-.idea
+### STS & Eclipse ###
+backend/.apt_generated
+backend/.classpath
+backend/.factorypath
+backend/.project
+backend/.settings
+backend/.springBeans
+backend/.sts4-cache
+
+# ==========================================
+# Frontend Ignore Rules (React / Node / Vite)
+# ==========================================
+frontend/node_modules/
+frontend/dist/
+frontend/dist-isolation/
+frontend/*.local
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ==========================================
+# IDEs & System Garbage (Global)
+# ==========================================
+.idea/
 *.iws
 *.iml
 *.ipr
+.vscode/
+.DS_Store

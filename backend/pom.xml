@@ -9,7 +9,7 @@
         <relativePath/>
     </parent>
     <groupId>com.demo</groupId>
-    <artifactId>demo</artifactId>
+    <artifactId>backend</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>demo</name>
     <description>Task Management API</description>
