@@ -28,7 +28,7 @@ frontend/.env.*.local
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
-
+frontend/.env
 # ==========================================
 # IDEs & System Garbage (Global)
 # ==========================================
@@ -37,4 +37,5 @@ frontend/yarn-error.log*
 *.iml
 *.ipr
 .vscode/
+*.vs/
 .DS_Store
