@@ -29,8 +29,19 @@ export default function AdminUsersPage() {
   }, []);
 
   const handleRoleChange = async (id, role) => {
-    await changeUserRole(id, role);
-    loadUsers(page);
+    try {
+      setError(""); // تصفير أي خطأ قديم قبل بدأ العملية الجديدة
+      
+      await changeUserRole(id, role);
+      loadUsers(page); // لو العملية نجحت، اعمل ريفريش للجدول
+      
+    } catch (err) {
+      // سحب رسالة الخطأ اللي جاية من السبرينج بوت (GlobalExceptionHandler)
+      const backendMessage = err.response?.data?.message || "Error updating user role.";
+      
+      // عرضها في الـ div الأحمر الموجود عندك في الكود
+      setError(backendMessage);
+    }
   };
 
   return (

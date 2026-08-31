@@ -3,6 +3,7 @@ package com.demo.controller;
 import com.demo.dto.RoleRequestDto;
 import com.demo.dto.TaskResponseDto;
 import com.demo.dto.UserResponseDto;
+import com.demo.model.User;
 import com.demo.service.AdminService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -42,9 +44,12 @@ public class AdminController
         return ResponseEntity.noContent().build();
     }
     @PutMapping("/users/{id}/role")
-    public ResponseEntity<UserResponseDto> changeUserRole(@PathVariable Long id ,@RequestBody @Valid RoleRequestDto roleDto)
-    {
-        return ResponseEntity.ok(adminService.updateUserRole(id, roleDto));
+    public ResponseEntity<UserResponseDto> changeUserRole(
+            @PathVariable Long id,
+            @RequestBody @Valid RoleRequestDto roleDto,
+            Authentication authentication) { // 👈 استخراج بيانات الأدمن الحالي
+        User currentAdmin = (User) authentication.getPrincipal();
+        return ResponseEntity.ok(adminService.updateUserRole(id, roleDto, currentAdmin.getId()));
     }
 
 }

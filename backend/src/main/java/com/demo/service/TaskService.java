@@ -8,6 +8,7 @@ import com.demo.model.Task;
 import com.demo.model.User;
 import com.demo.repository.TaskRepository;
 import com.demo.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -16,17 +17,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class TaskService {
 
     private final TaskRepository taskRepository;
     private final TaskMapper taskMapper;
     private final UserRepository userRepository;
-
-    public TaskService(TaskRepository taskRepository, TaskMapper taskMapper, UserRepository userRepository) {
-        this.taskRepository = taskRepository;
-        this.taskMapper = taskMapper;
-        this.userRepository = userRepository;
-    }
 
     // 1. إنشاء تاسك وربطها باليوزر الحالي
     @Transactional

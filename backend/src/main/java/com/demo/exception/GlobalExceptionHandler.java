@@ -4,6 +4,7 @@ import com.demo.dto.ErrorResponseDto;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
@@ -11,6 +12,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.server.ResponseStatusException;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -31,6 +34,12 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
     }
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ErrorResponseDto> handleDuplicate(DuplicateResourceException ex) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(new ErrorResponseDto(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
 
     // 2. معالجة عدم وجود الكائن في الداتابيز (404 Not Found)
     @ExceptionHandler(ResourceNotFoundException.class)
@@ -41,7 +50,23 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDto);
     }
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponseDto> handleResponseStatus(ResponseStatusException ex) {
+        ErrorResponseDto errorDto = new ErrorResponseDto(
+                ex.getStatusCode().value(),
+                ex.getReason()
+        );
+        return ResponseEntity.status(ex.getStatusCode()).body(errorDto);
+    }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponseDto> handleNotReadable(HttpMessageNotReadableException ex) {
+        ErrorResponseDto errorDto = new ErrorResponseDto(
+                HttpStatus.BAD_REQUEST.value(),
+                "Invalid value. Accepted values: USER, ADMIN"
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
+    }
     // 3. معالجة نصوص بدلاً من أرقام في الـ URL مثل /tasks/abc (400 Bad Request)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponseDto> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
@@ -80,6 +105,7 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
+
 
     // 7. حائط الدفاع الأخير لأي خطأ غريب غير متوقع (500 Internal Server Error)
     @ExceptionHandler(Exception.class)

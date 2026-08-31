@@ -2,6 +2,7 @@ package com.demo.service;
 
 import com.demo.dto.LoginRequestDto;
 import com.demo.dto.RegisterRequestDto;
+import com.demo.exception.DuplicateResourceException;
 import com.demo.model.User;
 import com.demo.repository.UserRepository;
 import com.demo.security.JwtUtils;
@@ -36,10 +37,10 @@ public class AuthService
     }
     public User register(RegisterRequestDto dto){
         if (userRepository.existsByUsername(dto.username())){
-            throw new RuntimeException("Username is already taken!");
+            throw new DuplicateResourceException("Username is already taken!");
         }
         if (userRepository.existsByEmail(dto.email())){
-            throw new RuntimeException("Email is already registered!");
+            throw new DuplicateResourceException("Email is already registered!");
         }
         User user = mapToEntity(dto);
         return userRepository.save(user);
@@ -47,8 +48,8 @@ public class AuthService
     public String login(LoginRequestDto dto){
         authenticationManager.authenticate
                 (new UsernamePasswordAuthenticationToken
-                        (dto.getUsername(), dto.getPassword()));
-        return jwtUtils.generateToken(dto.getUsername());
+                        (dto.username(), dto.password()));
+        return jwtUtils.generateToken(dto.username());
     }
 }
 

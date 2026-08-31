@@ -1,0 +1,31 @@
+# ============================================================
+# إعدادات بيئة الـ Test — يُحفظ في:
+#   src/test/resources/application-test.yml
+# ============================================================
+# يُفعَّل تلقائياً بفضل @ActiveProfiles("test") في BaseIntegrationTest
+# يُستبدل به application.yml الأصلي كلياً أثناء الـ Tests
+
+spring:
+  datasource:
+    # H2 In-Memory DB: لا تترك أثراً بعد انتهاء الـ Tests
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      # إنشاء الجداول تلقائياً من الـ Entities وحذفها بعد الانتهاء
+      ddl-auto: create-drop
+    show-sql: false
+
+  h2:
+    console:
+      enabled: false   # لا نحتاج واجهة H2 أثناء الـ Tests
+
+# ─── JWT ───────────────────────────────────────────────────
+# secret مؤقت للـ Tests فقط (256-bit base64)
+app:
+  jwt:
+    secret: dGVzdC1zZWNyZXQta2V5LWZvci1pbnRlZ3JhdGlvbi10ZXN0cy1vbmx5LTMyY2hhcnM=
+    expiration-ms: 3600000   # ساعة واحدة — كافي لتشغيل أي Test Suite
