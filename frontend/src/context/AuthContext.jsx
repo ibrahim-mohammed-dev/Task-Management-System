@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { loginUser, registerUser } from "../api/authApi";
 import { getCurrentUser } from "../api/userApi";
 import { getAllUsers } from "../api/adminApi";
@@ -12,8 +12,33 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Whenever the token changes (login, logout, page refresh with a saved
-  // token), fetch who the current user actually is from the backend.
+  // Extract permissions array from JWT token claims
+  const permissions = useMemo(() => {
+    if (!token) return [];
+    const decoded = decodeToken(token);
+    return Array.isArray(decoded?.permissions) ? decoded.permissions : [];
+  }, [token]);
+
+  // Extract groups array from JWT token claims
+  const groups = useMemo(() => {
+    if (!token) return [];
+    const decoded = decodeToken(token);
+    return Array.isArray(decoded?.groups) ? decoded.groups : [];
+  }, [token]);
+
+  // Helper method to check if current user has a specific permission
+  const hasPermission = (permissionName) => {
+    if (!permissionName) return true;
+    return permissions.includes(permissionName);
+  };
+
+  // Helper method to check if current user belongs to a specific group
+  const hasGroup = (groupName) => {
+    if (!groupName) return false;
+    return groups.some((g) => g.toUpperCase() === groupName.toUpperCase());
+  };
+
+  // Whenever the token changes (login, logout, page refresh with a saved token)
   useEffect(() => {
     let cancelled = false;
 
@@ -39,17 +64,25 @@ export function AuthProvider({ children }) {
         const res = await getCurrentUser();
         if (!cancelled) setUser(res.data);
 
-        // Determine if the user belongs to a group that has admin permissions
-        // by probing the admin endpoint — if it succeeds they have VIEW_ALL_USERS
-        // permission (only the ADMIN group has it), so they are admin.
-        try {
-          await getAllUsers({ page: 0, size: 1 });
-          if (!cancelled) setIsAdmin(true);
-        } catch {
-          if (!cancelled) setIsAdmin(false);
+        // Determine if user has admin access via token claims (groups/permissions) or admin API check
+        const isUserAdmin =
+          groups.some((g) => g.toUpperCase() === "ADMIN" || g.toUpperCase() === "ADMINS") ||
+          permissions.includes("MANAGE_GROUPS") ||
+          permissions.includes("VIEW_ALL_USERS");
+
+        if (!cancelled) {
+          if (isUserAdmin) {
+            setIsAdmin(true);
+          } else {
+            try {
+              await getAllUsers({ page: 0, size: 1 });
+              if (!cancelled) setIsAdmin(true);
+            } catch {
+              if (!cancelled) setIsAdmin(false);
+            }
+          }
         }
       } catch (err) {
-        // Token was rejected by the backend (expired/invalid) — log out.
         if (!cancelled) {
           localStorage.removeItem("token");
           setToken(null);
@@ -67,16 +100,12 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, groups, permissions]);
 
   const login = async (credentials) => {
     const response = await loginUser(credentials);
     const newToken = response.data;
-
-    // Save to localStorage first so the interceptor attaches it immediately
     localStorage.setItem("token", newToken);
-
-    // Then update state (triggers the useEffect above)
     setToken(newToken);
   };
 
@@ -92,7 +121,21 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ token, user, isAdmin, loading, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        token,
+        user,
+        isAdmin,
+        permissions,
+        groups,
+        hasPermission,
+        hasGroup,
+        loading,
+        login,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

@@ -1,7 +1,4 @@
-// Small helper to read data out of a JWT on the client side.
-// Your token only carries { sub: username, iat, exp } — no role — so this
-// is just used to pre-check expiry before bothering to call the API.
-// The actual username/role come from GET /api/users/me instead.
+// Helper to decode JWT tokens and read payload claims (sub, permissions, groups, exp).
 
 export function decodeToken(token) {
   try {

@@ -2,10 +2,11 @@ package com.demo.service;
 
 import com.demo.dto.LoginRequestDto;
 import com.demo.dto.RegisterRequestDto;
+import com.demo.model.Group;
 import com.demo.model.User;
+import com.demo.repository.GroupRepository;
 import com.demo.repository.UserRepository;
 import com.demo.security.JwtUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,28 +17,25 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-/**
- * عزل تام: لا @SpringBootTest، كل الـ Dependencies (UserRepository, PasswordEncoder,
- * AuthenticationManager, JwtUtils) تم عمل Mock لها.
- *
- * افتراض: LoginRequestDto عندها getUsername()/getPassword() (كما يظهر من استخدامها في
- * AuthService الأصلي)، لذلك تم عمل Mock لها بدلاً من افتراض شكل الـ Constructor.
- * RegisterRequestDto افترضتها record بالشكل (username, email, password) لأنها تُستخدم
- * كـ dto.username()/dto.email()/dto.password() في الكود الأصلي.
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AuthService Unit Tests")
 class AuthServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private GroupRepository groupRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -68,9 +66,14 @@ class AuthServiceTest {
         void register_shouldSaveNewUser_whenUsernameAndEmailAreAvailable() {
             // Arrange
             RegisterRequestDto dto = new RegisterRequestDto(USERNAME, EMAIL, RAW_PASSWORD);
+            Group defaultGroup = new Group();
+            defaultGroup.setId(1L);
+            defaultGroup.setName("USERS");
+
             when(userRepository.existsByUsername(USERNAME)).thenReturn(false);
             when(userRepository.existsByEmail(EMAIL)).thenReturn(false);
             when(passwordEncoder.encode(RAW_PASSWORD)).thenReturn(ENCODED_PASSWORD);
+            when(groupRepository.findByName("USERS")).thenReturn(Optional.of(defaultGroup));
 
             User savedUser = new User(USERNAME, EMAIL, ENCODED_PASSWORD);
             when(userRepository.save(any(User.class))).thenReturn(savedUser);
@@ -82,6 +85,7 @@ class AuthServiceTest {
             assertThat(result).isNotNull();
             assertThat(result.getUsername()).isEqualTo(USERNAME);
             verify(passwordEncoder, times(1)).encode(RAW_PASSWORD);
+            verify(groupRepository, times(1)).findByName("USERS");
             verify(userRepository, times(1)).save(any(User.class));
         }
 
@@ -132,7 +136,14 @@ class AuthServiceTest {
             LoginRequestDto dto = mock(LoginRequestDto.class);
             when(dto.username()).thenReturn(USERNAME);
             when(dto.password()).thenReturn(RAW_PASSWORD);
-            when(jwtUtils.generateToken(USERNAME)).thenReturn("mocked-jwt-token");
+
+            Authentication authentication = mock(Authentication.class);
+            User mockUser = new User(USERNAME, EMAIL, ENCODED_PASSWORD);
+            when(authentication.getPrincipal()).thenReturn(mockUser);
+            when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
+                    .thenReturn(authentication);
+
+            when(jwtUtils.generateToken(mockUser)).thenReturn("mocked-jwt-token");
 
             // Act
             String token = authService.login(dto);
@@ -141,7 +152,7 @@ class AuthServiceTest {
             assertThat(token).isEqualTo("mocked-jwt-token");
             verify(authenticationManager, times(1))
                     .authenticate(any(UsernamePasswordAuthenticationToken.class));
-            verify(jwtUtils, times(1)).generateToken(USERNAME);
+            verify(jwtUtils, times(1)).generateToken(mockUser);
         }
 
         @Test

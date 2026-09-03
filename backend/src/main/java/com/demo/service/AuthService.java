@@ -13,6 +13,7 @@ import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -49,10 +50,14 @@ public class AuthService
         return userRepository.save(user);
     }
     public String login(LoginRequestDto dto){
-        authenticationManager.authenticate
-                (new UsernamePasswordAuthenticationToken
-                        (dto.username(), dto.password()));
-        return jwtUtils.generateToken(dto.username());
+        // 1. إرجاع كائن الـ Authentication
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(dto.username(), dto.password())
+        );
+
+        // 2. سحب الـ User من الـ Principal
+        User user = (User) authentication.getPrincipal();
+
+        return jwtUtils.generateToken(user);
     }
 }
-
