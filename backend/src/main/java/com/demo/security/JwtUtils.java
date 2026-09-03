@@ -56,8 +56,19 @@ public class JwtUtils {
                 .getPayload()
                 .getSubject();
     }
+    // 3. استخراج الصلاحيات من الـ Token
+    @SuppressWarnings("unchecked")
+    public List<String> getPermissionsFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload()
+                .get("permissions", List.class); // <-- قراءة الـ Custom Claim باسم "permissions"
+    }
 
-    // 3. التحقق من صحة الـ Token
+
+    // 4. التحقق من صحة الـ Token
     public boolean validateJwtToken(String authToken) {
         try {
             Jwts.parser().verifyWith(getSigningKey()).build().parseSignedClaims(authToken);

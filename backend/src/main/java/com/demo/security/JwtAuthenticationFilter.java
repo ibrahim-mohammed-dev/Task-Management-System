@@ -6,14 +6,17 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -33,21 +36,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // 1. استخراج الـ Token من الهيدر بتاع الـ Request
             String jwt = parseJwt(request);
-
-            // 2. فحص التوكن للتأكد من صحته
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
-                // استخراج اسم المستخدم من التوكن
+                // 1. استخراج البيانات من التوكين مباشرة دون ضرب الداتابيز!
                 String username = jwtUtils.getUsernameFromJwtToken(jwt);
+                List<GrantedAuthority> authorities = jwtUtils.getPermissionsFromToken(jwt).stream()
+                        .map(SimpleGrantedAuthority::new)
+                        .collect(Collectors.toList());
 
-                // 3. عمل كائن Authentication يمثل المستخدم الحالي
-                UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
+                // 2. عمل كائن UserDetails محلياً دون Database Query
+                UserDetails userDetails = new org.springframework.security.core.userdetails.User(
+                        username, "", authorities
+                );
+
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                        new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
 
-                //بتجيب بيانات زيادة زي ip address و session id لو الحالة stateless هتكون null
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // 4. حفظ المستخدم جوه الـ SecurityContext (كده Spring Security عرف إن الـ Request ده صاحب حق)
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
         } catch (Exception e) {
