@@ -1,13 +1,15 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { loginUser, registerUser } from "../api/authApi";
 import { getCurrentUser } from "../api/userApi";
+import { getAllUsers } from "../api/adminApi";
 import { decodeToken, isTokenExpired } from "../utils/jwt";
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem("token"));
-  const [user, setUser] = useState(null); // { id, username, email, role }
+  const [user, setUser] = useState(null); // { id, username, email, groupName }
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Whenever the token changes (login, logout, page refresh with a saved
@@ -18,6 +20,7 @@ export function AuthProvider({ children }) {
     async function loadUser() {
       if (!token) {
         setUser(null);
+        setIsAdmin(false);
         setLoading(false);
         return;
       }
@@ -27,6 +30,7 @@ export function AuthProvider({ children }) {
         localStorage.removeItem("token");
         setToken(null);
         setUser(null);
+        setIsAdmin(false);
         setLoading(false);
         return;
       }
@@ -34,12 +38,23 @@ export function AuthProvider({ children }) {
       try {
         const res = await getCurrentUser();
         if (!cancelled) setUser(res.data);
+
+        // Determine if the user belongs to a group that has admin permissions
+        // by probing the admin endpoint — if it succeeds they have VIEW_ALL_USERS
+        // permission (only the ADMIN group has it), so they are admin.
+        try {
+          await getAllUsers({ page: 0, size: 1 });
+          if (!cancelled) setIsAdmin(true);
+        } catch {
+          if (!cancelled) setIsAdmin(false);
+        }
       } catch (err) {
         // Token was rejected by the backend (expired/invalid) — log out.
         if (!cancelled) {
           localStorage.removeItem("token");
           setToken(null);
           setUser(null);
+          setIsAdmin(false);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -56,9 +71,13 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     const response = await loginUser(credentials);
-    const newToken = response.data; // backend returns the JWT as plain text
+    const newToken = response.data;
+
+    // Save to localStorage first so the interceptor attaches it immediately
     localStorage.setItem("token", newToken);
-    setToken(newToken); // triggers the effect above to fetch /api/users/me
+
+    // Then update state (triggers the useEffect above)
+    setToken(newToken);
   };
 
   const register = async (data) => {
@@ -69,12 +88,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("token");
     setToken(null);
     setUser(null);
+    setIsAdmin(false);
   };
-
-  // Role comes back as your Role enum's name (e.g. "ADMIN"). Using
-  // "includes" instead of an exact match so this still works whether your
-  // enum values are "ADMIN" or something like "ROLE_ADMIN".
-  const isAdmin = typeof user?.role === "string" && user.role.toUpperCase().includes("ADMIN");
 
   return (
     <AuthContext.Provider value={{ token, user, isAdmin, loading, login, register, logout }}>

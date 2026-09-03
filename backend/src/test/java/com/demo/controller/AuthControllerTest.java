@@ -19,9 +19,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   POST /api/auth/login
  * ============================================================
  * الإعدادات موروثة من BaseIntegrationTest:
- *   - H2 in-memory DB
+ *   - H2 in-memory DB (توافقية PostgreSQL)
  *   - @Transactional → Rollback بعد كل test
- *   - testuser / testadmin منشئين مسبقاً في @BeforeEach
+ *   - testuser / testadmin منشئين مسبقاً في BaseIntegrationTest مع ربطهم بمجموعاتهم وصلاحياتهم
  */
 @DisplayName("AuthController Integration Tests")
 class AuthControllerTest extends BaseIntegrationTest {
@@ -53,7 +53,7 @@ class AuthControllerTest extends BaseIntegrationTest {
         @Test
         @DisplayName("Business Rule: يرجع 400/409 لو اليوزرنيم مكرر")
         void register_shouldReturnError_whenUsernameAlreadyTaken() throws Exception {
-            // Arrange — testuser مسجّل بالفعل من @BeforeEach
+            // Arrange — testuser مسجّل بالفعل من BaseIntegrationTest
             RegisterRequestDto dto = new RegisterRequestDto(USER_USERNAME, "other@demo.com", "Str0ng!Pass");
 
             // Act & Assert
@@ -66,7 +66,7 @@ class AuthControllerTest extends BaseIntegrationTest {
         @Test
         @DisplayName("Business Rule: يرجع 400/409 لو الايميل مكرر")
         void register_shouldReturnError_whenEmailAlreadyRegistered() throws Exception {
-            // Arrange — testuser@demo.com مسجّل بالفعل من @BeforeEach
+            // Arrange — testuser@demo.com مسجّل بالفعل من BaseIntegrationTest
             RegisterRequestDto dto = new RegisterRequestDto("brandnewuser", USER_EMAIL, "Str0ng!Pass");
 
             // Act & Assert
@@ -87,7 +87,7 @@ class AuthControllerTest extends BaseIntegrationTest {
         @Test
         @DisplayName("Happy Path: يرجع JWT Token صحيح لبيانات صحيحة")
         void login_shouldReturnJwtToken_whenCredentialsAreValid() throws Exception {
-            // Arrange — بيانات الـ testuser المنشأ في @BeforeEach
+            // Arrange — بيانات الـ testuser المنشأ في BaseIntegrationTest
             Map<String, String> loginBody = Map.of(
                     "username", USER_USERNAME,
                     "password", USER_PASSWORD

@@ -1,56 +1,65 @@
 import { useEffect, useState } from "react";
-import { getAllUsers, changeUserRole } from "../api/adminApi";
+import { getAllUsers } from "../api/adminApi";
+import { assignUserToGroup, getAllGroups } from "../api/groupApi";
 import Pagination from "../components/Pagination";
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const loadUsers = async (pageNo = 0) => {
+  const loadData = async (pageNo = 0) => {
     setLoading(true);
     setError("");
     try {
-      const res = await getAllUsers({ page: pageNo, size: 10 });
-      setUsers(res.data.content);
-      setTotalPages(res.data.totalPages);
-      setPage(res.data.number);
+      const [usersRes, groupsRes] = await Promise.all([
+        getAllUsers({ page: pageNo, size: 10 }),
+        getAllGroups({ page: 0, size: 100 }),
+      ]);
+      setUsers(usersRes.data.content || []);
+      setTotalPages(usersRes.data.totalPages || 0);
+      setPage(usersRes.data.number || 0);
+      setGroups(groupsRes.data.content || groupsRes.data || []);
     } catch (err) {
-      setError("Could not load users.");
+      setError("Could not load users or groups data.");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadUsers(0);
+    loadData(0);
   }, []);
 
-  const handleRoleChange = async (id, role) => {
+  const handleAssignGroup = async (userId, targetGroupId) => {
+    if (!targetGroupId) return;
+    setError("");
+    setSuccessMessage("");
     try {
-      setError(""); // تصفير أي خطأ قديم قبل بدأ العملية الجديدة
-      
-      await changeUserRole(id, role);
-      loadUsers(page); // لو العملية نجحت، اعمل ريفريش للجدول
-      
+      await assignUserToGroup(targetGroupId, userId);
+      setSuccessMessage("User assigned to group successfully!");
+      loadData(page);
     } catch (err) {
-      // سحب رسالة الخطأ اللي جاية من السبرينج بوت (GlobalExceptionHandler)
-      const backendMessage = err.response?.data?.message || "Error updating user role.";
-      
-      // عرضها في الـ div الأحمر الموجود عندك في الكود
-      setError(backendMessage);
+      setError(err.response?.data?.message || "Error assigning user to group.");
     }
   };
 
   return (
     <div className="page">
-      <h2>Manage users</h2>
+      <h2>Manage Users</h2>
+      <p className="hint-text">
+        View registered users and assign them to groups. Manage permissions on the{" "}
+        <a href="/admin/groups">Group Management</a> page.
+      </p>
       {error && <div className="alert alert-error">{error}</div>}
+      {successMessage && <div className="alert alert-success">{successMessage}</div>}
 
       {loading ? (
-        <p className="hint-text">Loading...</p>
+        <p className="hint-text">Loading users...</p>
       ) : (
         <div className="table-wrap">
           <table className="table">
@@ -59,8 +68,8 @@ export default function AdminUsersPage() {
                 <th>ID</th>
                 <th>Username</th>
                 <th>Email</th>
-                <th>Role</th>
-                <th>Change role</th>
+                <th>Current Group</th>
+                <th>Assign Group</th>
               </tr>
             </thead>
             <tbody>
@@ -70,21 +79,24 @@ export default function AdminUsersPage() {
                   <td>{u.username}</td>
                   <td>{u.email}</td>
                   <td>
-                    <span className="badge">{u.role}</span>
+                    <span className="badge">{u.groupName ?? "—"}</span>
                   </td>
                   <td>
                     <select
                       defaultValue=""
                       onChange={(e) => {
-                        if (e.target.value) handleRoleChange(u.id, e.target.value);
+                        if (e.target.value) handleAssignGroup(u.id, e.target.value);
                         e.target.value = "";
                       }}
                     >
                       <option value="" disabled>
-                        Set role...
+                        Assign to group...
                       </option>
-                      <option value="USER">USER</option>
-                      <option value="ADMIN">ADMIN</option>
+                      {groups.map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.name}
+                        </option>
+                      ))}
                     </select>
                   </td>
                 </tr>
@@ -94,7 +106,7 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      <Pagination page={page} totalPages={totalPages} onPageChange={loadUsers} />
+      <Pagination page={page} totalPages={totalPages} onPageChange={(p) => loadData(p)} />
     </div>
   );
 }

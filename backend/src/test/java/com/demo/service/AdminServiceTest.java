@@ -1,11 +1,9 @@
 package com.demo.service;
 
-import com.demo.dto.RoleRequestDto;
 import com.demo.dto.UserResponseDto;
 import com.demo.exception.ResourceNotFoundException;
 import com.demo.mapper.TaskMapper;
 import com.demo.mapper.UserMapper;
-import com.demo.model.Role;
 import com.demo.model.Task;
 import com.demo.model.User;
 import com.demo.repository.TaskRepository;
@@ -74,73 +72,5 @@ class AdminServiceTest {
 
         // التأكد من أن دالة الحذف لم يتم استدعاؤها نهائياً
         verify(taskRepository, never()).delete(any());
-    }
-
-    // ==========================================
-    // 2. اختبارات ميثود updateUserRole
-    // ==========================================
-
-    @Test
-    void shouldUpdateUserRole_Successfully() {
-        // Arrange (التحضير)
-        Long userId = 2L;
-        Long adminId = 1L; // مختلف عن الـ userId
-        RoleRequestDto roleDto = new RoleRequestDto(Role.ADMIN);
-
-        User existingUser = new User();
-        existingUser.setId(userId);
-        existingUser.setRole(Role.USER);
-
-        User savedUser = new User();
-        savedUser.setId(userId);
-        savedUser.setRole(Role.ADMIN);
-
-        UserResponseDto expectedResponse = new UserResponseDto(userId, "ziad@example.com",Role.ADMIN,"ziad");
-        when(userRepository.findById(userId)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(savedUser);
-        when(userMapper.toResponseDto(savedUser)).thenReturn(expectedResponse);
-
-        // Act (التنفيذ)
-        UserResponseDto response = adminService.updateUserRole(userId, roleDto, adminId);
-
-        // Assert (التحقق)
-        assertNotNull(response);
-        verify(userRepository, times(1)).save(existingUser);
-        assertEquals(Role.ADMIN, existingUser.getRole());
-    }
-
-    @Test
-    void shouldThrowException_WhenAdminTriesToChangeOwnRole() {
-        // Arrange (التحضير)
-        Long adminId = 1L;
-        RoleRequestDto roleDto = new RoleRequestDto(Role.USER);
-
-        // Act & Assert (التنفيذ والتحقق من قاعدة الـ Business)
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
-            adminService.updateUserRole(adminId, roleDto, adminId); // نفس الـ ID
-        });
-
-        assertEquals("400 BAD_REQUEST \"You cannot change your own role!\"", exception.getMessage());
-
-        // التأكد من أن الداتابيز لم يتم استدعاؤها نهائياً لأن الطلب رُفض مسبقاً
-        verify(userRepository, never()).findById(anyLong());
-        verify(userRepository, never()).save(any());
-    }
-
-    @Test
-    void shouldThrowException_WhenUserToUpdateNotFound() {
-        // Arrange (التحضير)
-        Long userId = 50L;
-        Long adminId = 1L;
-        RoleRequestDto roleDto = new RoleRequestDto(Role.ADMIN);
-
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
-
-        // Act & Assert (التنفيذ والتحقق من عدم وجود المستخدم)
-        assertThrows(ResourceNotFoundException.class, () -> {
-            adminService.updateUserRole(userId, roleDto, adminId);
-        });
-
-        verify(userRepository, never()).save(any());
     }
 }

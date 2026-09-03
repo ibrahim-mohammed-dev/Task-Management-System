@@ -8,6 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,6 +24,7 @@ public class TaskController {
 
     // 1. إنشاء مهمة جديدة
     @PostMapping
+    @PreAuthorize("hasAuthority('CREATE_TASK')")
     public ResponseEntity<TaskResponseDto> createTask(
             @Valid @RequestBody TaskRequestDto taskRequestDto,
             @AuthenticationPrincipal User currentUser) {
@@ -31,7 +33,9 @@ public class TaskController {
         return new ResponseEntity<>(createdTask, HttpStatus.CREATED);
     }
 
+
     // 2. جلب جميع مهام المستخدم الحالي (مع Pagination وترتيب)
+    @PreAuthorize("hasAuthority('VIEW_TASKS')")
     @GetMapping
     public ResponseEntity<Page<TaskResponseDto>> getAllTasks(
             @AuthenticationPrincipal User currentUser,
@@ -45,6 +49,7 @@ public class TaskController {
     }
 
     // 3. جلب مهمة واحدة بالـ ID
+    @PreAuthorize("hasAuthority('VIEW_TASKS')")
     @GetMapping("/{id}")
     public ResponseEntity<TaskResponseDto> getTaskById(
             @PathVariable Long id,
@@ -54,6 +59,7 @@ public class TaskController {
     }
 
     // 4. تعديل عنوان ووصف المهمة (PUT)
+    @PreAuthorize("hasAuthority('EDIT_TASK')")
     @PutMapping("/{id}")
     public ResponseEntity<TaskResponseDto> updateTask(
             @PathVariable Long id,
@@ -64,6 +70,7 @@ public class TaskController {
     }
 
     // 5. تغيير حالة الإنجاز فقط (PATCH)
+    @PreAuthorize("hasAuthority('EDIT_TASK')")
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<TaskResponseDto> toggleTaskStatus(
             @PathVariable Long id,
@@ -73,6 +80,7 @@ public class TaskController {
     }
 
     // 6. حذف مهمة
+    @PreAuthorize("hasAuthority('DELETE_TASK')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(
             @PathVariable Long id,
@@ -82,4 +90,4 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 }
-
+
