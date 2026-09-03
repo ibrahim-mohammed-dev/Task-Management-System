@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -27,7 +28,7 @@ public class TaskController {
     @PreAuthorize("hasAuthority('CREATE_TASK')")
     public ResponseEntity<TaskResponseDto> createTask(
             @Valid @RequestBody TaskRequestDto taskRequestDto,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
 
         TaskResponseDto createdTask = taskService.createTask(taskRequestDto, currentUser);
         return new ResponseEntity<>(createdTask, HttpStatus.CREATED);
@@ -38,7 +39,7 @@ public class TaskController {
     @PreAuthorize("hasAuthority('VIEW_TASKS')")
     @GetMapping
     public ResponseEntity<Page<TaskResponseDto>> getAllTasks(
-            @AuthenticationPrincipal User currentUser,
+            @AuthenticationPrincipal UserDetails currentUser,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(defaultValue = "id") String sortBy,
@@ -53,7 +54,7 @@ public class TaskController {
     @GetMapping("/{id}")
     public ResponseEntity<TaskResponseDto> getTaskById(
             @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
 
         return ResponseEntity.ok(taskService.getTaskById(id, currentUser));
     }
@@ -64,7 +65,7 @@ public class TaskController {
     public ResponseEntity<TaskResponseDto> updateTask(
             @PathVariable Long id,
             @Valid @RequestBody TaskRequestDto taskRequestDto,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
 
         return ResponseEntity.ok(taskService.updateTask(id, taskRequestDto, currentUser));
     }
@@ -74,7 +75,7 @@ public class TaskController {
     @PatchMapping("/{id}/toggle")
     public ResponseEntity<TaskResponseDto> toggleTaskStatus(
             @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
 
         return ResponseEntity.ok(taskService.toggleTaskStatus(id, currentUser));
     }
@@ -84,7 +85,7 @@ public class TaskController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(
             @PathVariable Long id,
-            @AuthenticationPrincipal User currentUser) {
+            @AuthenticationPrincipal UserDetails currentUser) {
 
         taskService.deleteTask(id, currentUser);
         return ResponseEntity.noContent().build();

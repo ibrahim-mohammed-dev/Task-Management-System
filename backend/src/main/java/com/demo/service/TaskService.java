@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,11 +25,18 @@ public class TaskService {
     private final TaskMapper taskMapper;
     private final UserRepository userRepository;
 
+    private User getManagedUser(UserDetails currentUser) {
+        User user = userRepository.findByUsername(currentUser.getUsername());
+        if (user == null) {
+            throw new ResourceNotFoundException("User not found with username: " + currentUser.getUsername());
+        }
+        return user;
+    }
+
     // 1. إنشاء تاسك وربطها باليوزر الحالي
     @Transactional
-    public TaskResponseDto createTask(TaskRequestDto newTaskDto, User currentUser) {
-        User managedUser = userRepository.findById(currentUser.getId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + currentUser.getId()));
+    public TaskResponseDto createTask(TaskRequestDto newTaskDto, UserDetails currentUser) {
+        User managedUser = getManagedUser(currentUser);
         Task task = taskMapper.toEntity(newTaskDto);
         task.setUser(managedUser); // ربط التاسك بمالكها
         Task savedTask = taskRepository.save(task);
@@ -37,22 +45,24 @@ public class TaskService {
 
     // 2. جلب جميع تاسكات اليوزر الحالي فقط (مع Pagination)
     @Transactional(readOnly = true)
-    public Page<TaskResponseDto> getAllTasksForCurrentUser(User currentUser, int pageNo, int pageSize, String sortBy, String sortDir) {
+    public Page<TaskResponseDto> getAllTasksForCurrentUser(UserDetails currentUser, int pageNo, int pageSize, String sortBy, String sortDir) {
+        User managedUser = getManagedUser(currentUser);
         Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name())
                 ? Sort.by(sortBy).ascending()
                 : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(pageNo, pageSize, sort);
 
         // جلب مهام المستخدم الحالي فقط
-        Page<Task> tasks = taskRepository.findByUserId(currentUser.getId(), pageable);
+        Page<Task> tasks = taskRepository.findByUserId(managedUser.getId(), pageable);
 
         return tasks.map(taskMapper::toResponseDto);
     }
 
     // 3. جلب تاسك واحدة بالـ ID مع التأكد إنها ملك لليوزر الحالي
     @Transactional(readOnly = true)
-    public TaskResponseDto getTaskById(Long taskId, User currentUser) {
-        Task task = taskRepository.findByIdAndUserId(taskId, currentUser.getId())
+    public TaskResponseDto getTaskById(Long taskId, UserDetails currentUser) {
+        User managedUser = getManagedUser(currentUser);
+        Task task = taskRepository.findByIdAndUserId(taskId, managedUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
 
         return taskMapper.toResponseDto(task);
@@ -60,8 +70,9 @@ public class TaskService {
 
     // 4. تعديل تاسك مع التأكد من الملكية
     @Transactional
-    public TaskResponseDto updateTask(Long taskId, TaskRequestDto taskRequestDto, User currentUser) {
-        Task task = taskRepository.findByIdAndUserId(taskId, currentUser.getId())
+    public TaskResponseDto updateTask(Long taskId, TaskRequestDto taskRequestDto, UserDetails currentUser) {
+        User managedUser = getManagedUser(currentUser);
+        Task task = taskRepository.findByIdAndUserId(taskId, managedUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
 
         task.setTitle(taskRequestDto.title());
@@ -73,8 +84,9 @@ public class TaskService {
 
     // 5. حذف تاسك مع التأكد من الملكية
     @Transactional
-    public void deleteTask(Long taskId, User currentUser) {
-        Task task = taskRepository.findByIdAndUserId(taskId, currentUser.getId())
+    public void deleteTask(Long taskId, UserDetails currentUser) {
+        User managedUser = getManagedUser(currentUser);
+        Task task = taskRepository.findByIdAndUserId(taskId, managedUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
 
         taskRepository.delete(task);
@@ -82,8 +94,9 @@ public class TaskService {
 
     // 6. تعديل حالة التاسك
     @Transactional
-    public TaskResponseDto toggleTaskStatus(Long taskId, User currentUser) {
-        Task task = taskRepository.findByIdAndUserId(taskId, currentUser.getId())
+    public TaskResponseDto toggleTaskStatus(Long taskId, UserDetails currentUser) {
+        User managedUser = getManagedUser(currentUser);
+        Task task = taskRepository.findByIdAndUserId(taskId, managedUser.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Task not found with id: " + taskId));
 
         // عكس الحالة الحالية

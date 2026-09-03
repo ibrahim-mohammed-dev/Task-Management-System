@@ -19,10 +19,23 @@ export function AuthProvider({ children }) {
     return Array.isArray(decoded?.permissions) ? decoded.permissions : [];
   }, [token]);
 
+  // Extract groups array from JWT token claims
+  const groups = useMemo(() => {
+    if (!token) return [];
+    const decoded = decodeToken(token);
+    return Array.isArray(decoded?.groups) ? decoded.groups : [];
+  }, [token]);
+
   // Helper method to check if current user has a specific permission
   const hasPermission = (permissionName) => {
     if (!permissionName) return true;
     return permissions.includes(permissionName);
+  };
+
+  // Helper method to check if current user belongs to a specific group
+  const hasGroup = (groupName) => {
+    if (!groupName) return false;
+    return groups.some((g) => g.toUpperCase() === groupName.toUpperCase());
   };
 
   // Whenever the token changes (login, logout, page refresh with a saved token)
@@ -51,12 +64,23 @@ export function AuthProvider({ children }) {
         const res = await getCurrentUser();
         if (!cancelled) setUser(res.data);
 
-        // Determine if user has admin access by probing admin endpoint
-        try {
-          await getAllUsers({ page: 0, size: 1 });
-          if (!cancelled) setIsAdmin(true);
-        } catch {
-          if (!cancelled) setIsAdmin(false);
+        // Determine if user has admin access via token claims (groups/permissions) or admin API check
+        const isUserAdmin =
+          groups.some((g) => g.toUpperCase() === "ADMIN" || g.toUpperCase() === "ADMINS") ||
+          permissions.includes("MANAGE_GROUPS") ||
+          permissions.includes("VIEW_ALL_USERS");
+
+        if (!cancelled) {
+          if (isUserAdmin) {
+            setIsAdmin(true);
+          } else {
+            try {
+              await getAllUsers({ page: 0, size: 1 });
+              if (!cancelled) setIsAdmin(true);
+            } catch {
+              if (!cancelled) setIsAdmin(false);
+            }
+          }
         }
       } catch (err) {
         if (!cancelled) {
@@ -76,7 +100,7 @@ export function AuthProvider({ children }) {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, groups, permissions]);
 
   const login = async (credentials) => {
     const response = await loginUser(credentials);
@@ -103,7 +127,9 @@ export function AuthProvider({ children }) {
         user,
         isAdmin,
         permissions,
+        groups,
         hasPermission,
+        hasGroup,
         loading,
         login,
         register,
