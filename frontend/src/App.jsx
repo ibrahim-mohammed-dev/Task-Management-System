@@ -21,12 +21,12 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* Regular authenticated users */}
-            <Route element={<PrivateRoute />}>
+            {/* Regular authenticated users with VIEW_TASKS permission */}
+            <Route element={<PrivateRoute requiredPermission="VIEW_TASKS" />}>
               <Route path="/tasks" element={<TasksPage />} />
             </Route>
 
-            {/* Admin-only (requires VIEW_ALL_USERS / MANAGE_GROUPS permissions) */}
+            {/* Admin-only routes */}
             <Route element={<AdminRoute />}>
               <Route path="/admin/users" element={<AdminUsersPage />} />
               <Route path="/admin/tasks" element={<AdminTasksPage />} />
