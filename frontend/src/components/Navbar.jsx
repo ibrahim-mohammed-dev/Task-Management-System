@@ -21,6 +21,7 @@ export default function Navbar() {
             <Link to="/tasks">My Tasks</Link>
             {isAdmin && <Link to="/admin/users">Users</Link>}
             {isAdmin && <Link to="/admin/tasks">All Tasks</Link>}
+            {isAdmin && <Link to="/admin/groups">Groups</Link>}
             {user?.username && <span className="navbar-user">{user.username}</span>}
             <button className="btn btn-outline btn-small" onClick={handleLogout}>
               Logout

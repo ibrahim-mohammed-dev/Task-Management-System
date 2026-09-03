@@ -1,13 +1,10 @@
 package com.demo.controller;
 
-import com.demo.dto.RoleRequestDto;
-import com.demo.model.Role;
 import com.demo.model.Task;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -20,17 +17,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   GET    /api/admin/users
  *   GET    /api/admin/tasks
  *   DELETE /api/admin/tasks/{id}
- *   PUT    /api/admin/users/{id}/role
  * ============================================================
  *
  * محور الـ Tests هنا هو:
- *   1. الأدمن يقدر يعمل كل حاجة ✅
+ *   1. الأدمن (الذي يملك صلاحيات ADMINS) يقدر يعمل كل حاجة ✅
  *   2. اليوزر العادي يُمنع بـ 403 Forbidden من كل الـ Admin Endpoints 🚫
  *   3. أي طلب بدون Token يُمنع بـ 401 Unauthorized 🔒
- *
- * ⚠️ افتراض: RoleRequestDto عندها حقل اسمه "role" من نوع String أو Enum
- *            وـ AdminService.updateUserRole لا تسمح للأدمن يغيّر role نفسه
- *            (Business Rule — لو مش موجودة عندك اشرح ذلك في التعليق)
  */
 @DisplayName("AdminController Integration Tests")
 class AdminControllerTest extends BaseIntegrationTest {
@@ -154,99 +146,13 @@ class AdminControllerTest extends BaseIntegrationTest {
         @Test
         @DisplayName("Security: اليوزر العادي يُمنع ويرجع 403 — حتى لو بيحاول يحذف تاسكته")
         void deleteTask_shouldReturn403_whenNormalUser() throws Exception {
-            // ملاحظة: هذا الـ Endpoint خاص بالأدمن فقط — اليوزر يُمنع حتى لو كانت تاسكته
+            // ملاحظة: هذا الـ Endpoint خاص بصلاحية DELETE_ANY_TASK — اليوزر العادي يُمنع
             mockMvc.perform(delete("/api/admin/tasks/{id}", task1.getId())
                             .header("Authorization", bearerToken(userToken)))
                     .andExpect(status().isForbidden());
 
             // Assert DB — التاسك لسه موجودة (ما اتحذفتش)
             assertThat(taskRepository.findById(task1.getId())).isPresent();
-        }
-    }
-
-    // ================================================================
-    // PUT /api/admin/users/{id}/role
-    // ================================================================
-    @Nested
-    @DisplayName("PUT /api/admin/users/{id}/role — changeUserRole")
-    class ChangeUserRole {
-
-        @Test
-        @DisplayName("Happy Path: الأدمن يرفّع يوزر عادي لـ ADMIN ويرجع 200")
-        void changeUserRole_shouldReturn200WithUpdatedRole_whenAdmin() throws Exception {
-            // Arrange
-            RoleRequestDto dto = new RoleRequestDto(Role.ADMIN);
-
-            // Act & Assert
-            mockMvc.perform(put("/api/admin/users/{id}/role", savedUser.getId())
-                            .header("Authorization", bearerToken(adminToken))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(dto)))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.role").value("ADMIN"));
-
-            // Assert DB
-            assertThat(userRepository.findById(savedUser.getId())
-                    .orElseThrow().getRole())
-                    .isEqualTo(Role.ADMIN);
-        }
-
-        @Test
-        @DisplayName("Business Rule: الأدمن لا يقدر يغيّر دور نفسه — يرجع 400")
-        void changeUserRole_shouldReturn400_whenAdminTriesToChangeOwnRole() throws Exception {
-            // Arrange — الأدمن يحاول يغيّر role نفسه
-            RoleRequestDto dto = new RoleRequestDto(Role.USER);
-
-            // Act & Assert
-            // ⚠️ لو AdminService عندك مش بيتحقق من هذا الـ Business Rule،
-            //    ابدأ بإضافة الـ check فيه ثم شغّل الـ Test
-            mockMvc.perform(put("/api/admin/users/{id}/role", savedAdmin.getId())
-                            .header("Authorization", bearerToken(adminToken))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(dto)))
-                    .andExpect(status().isBadRequest());
-        }
-
-        @Test
-        @DisplayName("Not Found: يرجع 404 لو الـ User ID مش موجود")
-        void changeUserRole_shouldReturn404_whenUserDoesNotExist() throws Exception {
-            // Arrange
-            RoleRequestDto dto = new RoleRequestDto(Role.ADMIN);
-
-            // Act & Assert
-            mockMvc.perform(put("/api/admin/users/{id}/role", 99999L)
-                            .header("Authorization", bearerToken(adminToken))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(dto)))
-                    .andExpect(status().isNotFound());
-        }
-
-        @Test
-        @DisplayName("Validation: يرجع 400 لو جاء body فاضي أو role قيمة غلط")
-        void changeUserRole_shouldReturn400_whenRoleIsInvalid() throws Exception {
-            // Arrange — JSON بقيمة role غير صحيحة
-            String invalidBody = "{\"role\": \"SUPERUSER\"}";
-
-            // Act & Assert
-            mockMvc.perform(put("/api/admin/users/{id}/role", savedUser.getId())
-                            .header("Authorization", bearerToken(adminToken))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(invalidBody))
-                    .andExpect(status().isBadRequest());
-        }
-
-        @Test
-        @DisplayName("Security: اليوزر العادي يُمنع من تغيير الأدوار ويرجع 403")
-        void changeUserRole_shouldReturn403_whenNormalUser() throws Exception {
-            // Arrange
-            RoleRequestDto dto = new RoleRequestDto(Role.ADMIN);
-
-            // Act & Assert
-            mockMvc.perform(put("/api/admin/users/{id}/role", savedUser.getId())
-                            .header("Authorization", bearerToken(userToken))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(dto)))
-                    .andExpect(status().isForbidden());
         }
     }
 }

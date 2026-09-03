@@ -23,11 +23,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   PATCH  /api/tasks/{id}/toggle
  *   DELETE /api/tasks/{id}
  * ============================================================
- * كل الـ tests بتشتغل على H2 وبيتراجع فيها الـ Rollback تلقائياً.
- * اليوزر والأدمن والـ Tokens جاهزين من BaseIntegrationTest.
- *
- * ⚠️ افتراض: Task entity عندها no-arg constructor + setters عادية
- * (setTitle, setDescription, setUser, setCompleted) وـ getId().
+ * كل الـ tests بتشتغل على H2 (بوضع توافقية PostgreSQL) وبيتراجع فيها الـ Rollback تلقائياً بفضل @Transactional.
+ * اليوزر والأدمن والـ Tokens والصلاحيات جاهزون مسبقاً من BaseIntegrationTest.
  */
 @DisplayName("TaskController Integration Tests")
 class TaskControllerTest extends BaseIntegrationTest {
@@ -219,8 +216,6 @@ class TaskControllerTest extends BaseIntegrationTest {
         @Test
         @DisplayName("Happy Path: يعكس حالة التاسك من false لـ true ويرجع 200")
         void toggleTask_shouldFlipCompletedStatus_whenOwned() throws Exception {
-            // Arrange — التاسك الابتدائية completed = false
-
             // Act & Assert
             mockMvc.perform(patch("/api/tasks/{id}/toggle", existingTask.getId())
                             .header("Authorization", bearerToken(userToken)))
