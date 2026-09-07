@@ -28,6 +28,7 @@ public class AuthService
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final RefreshTokenService refreshTokenService;
+
     public User mapToEntity(RegisterRequestDto dto) {
         return new User(
                 dto.username(),
@@ -35,6 +36,7 @@ public class AuthService
                 passwordEncoder.encode(dto.password())
         );
     }
+
     @Transactional
     public User register(RegisterRequestDto dto){
         if (userRepository.existsByUsername(dto.username())){
@@ -46,11 +48,13 @@ public class AuthService
         User user = mapToEntity(dto);
         Group defaultGroup = groupRepository.findByName("USERS")
                 .orElseThrow(() -> new ResourceNotFoundException("Default group USERS not found"));
-        user.getGroups().add(defaultGroup);
 
-        defaultGroup.getUsers().add(user);
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        defaultGroup.getUsers().add(savedUser);
+        groupRepository.save(defaultGroup);
+        return savedUser;
     }
+
     public AuthResponseDto login(LoginRequestDto dto){
         // 1. إرجاع كائن الـ Authentication
         Authentication authentication = authenticationManager.authenticate(

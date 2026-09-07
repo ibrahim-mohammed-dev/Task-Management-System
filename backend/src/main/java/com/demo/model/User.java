@@ -35,7 +35,7 @@ public class User implements UserDetails {
     private String password;
 
     @ManyToMany(mappedBy = "users" ,fetch = FetchType.LAZY)
-    private Set<Group> groups = new HashSet<>();;
+    private Set<Group> groups = new HashSet<>();
 
     // Constructor واضح وصريح للـ Registration بس
     public User(String username, String email, String password ) {
