@@ -1,5 +1,6 @@
 package com.demo.service;
 
+import com.demo.dto.AuthResponseDto;
 import com.demo.dto.LoginRequestDto;
 import com.demo.dto.RegisterRequestDto;
 import com.demo.exception.DuplicateResourceException;
@@ -26,6 +27,7 @@ public class AuthService
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
+    private final RefreshTokenService refreshTokenService;
     public User mapToEntity(RegisterRequestDto dto) {
         return new User(
                 dto.username(),
@@ -49,7 +51,7 @@ public class AuthService
         defaultGroup.getUsers().add(user);
         return userRepository.save(user);
     }
-    public String login(LoginRequestDto dto){
+    public AuthResponseDto login(LoginRequestDto dto){
         // 1. إرجاع كائن الـ Authentication
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(dto.username(), dto.password())
@@ -57,7 +59,8 @@ public class AuthService
 
         // 2. سحب الـ User من الـ Principal
         User user = (User) authentication.getPrincipal();
-
-        return jwtUtils.generateToken(user);
+        AuthResponseDto dto1 = new AuthResponseDto(jwtUtils.generateToken(user)
+                ,refreshTokenService.createRefreshToken(user));
+        return dto1;
     }
 }

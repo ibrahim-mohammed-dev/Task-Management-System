@@ -27,93 +27,88 @@ public class GlobalExceptionHandler {
         for (FieldError error : ex.getBindingResult().getFieldErrors()) {
             fieldErrors.put(error.getField(), error.getDefaultMessage());
         }
-        ErrorResponseDto errorDto = new ErrorResponseDto(
-                HttpStatus.BAD_REQUEST.value(),
-                "فشل التحقق من صحة البيانات المدخلة",
-                fieldErrors
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDto(HttpStatus.BAD_REQUEST.value(), "فشل التحقق من صحة البيانات المدخلة", fieldErrors)
         );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
-    }
-    @ExceptionHandler(DuplicateResourceException.class)
-    public ResponseEntity<ErrorResponseDto> handleDuplicate(DuplicateResourceException ex) {
-        return ResponseEntity
-                .status(HttpStatus.CONFLICT)
-                .body(new ErrorResponseDto(HttpStatus.CONFLICT.value(), ex.getMessage()));
     }
 
-    // 2. معالجة عدم وجود الكائن في الداتابيز (404 Not Found)
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ErrorResponseDto> handleNotFoundException(ResourceNotFoundException ex) {
-        ErrorResponseDto errorDto = new ErrorResponseDto(
-                HttpStatus.NOT_FOUND.value(),
-                ex.getMessage()
+    // 2. معالجة فشل تحديث التوكن / توكن منتهي الصلاحية (403 Forbidden)
+    @ExceptionHandler(TokenRefreshException.class)
+    public ResponseEntity<ErrorResponseDto> handleTokenRefreshException(TokenRefreshException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                new ErrorResponseDto(HttpStatus.FORBIDDEN.value(), ex.getMessage())
         );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorDto);
     }
+
+    // 3. معالجة تكرار الموارد المخصصة (409 Conflict)
+    @ExceptionHandler(DuplicateResourceException.class)
+    public ResponseEntity<ErrorResponseDto> handleDuplicateResource(DuplicateResourceException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponseDto(HttpStatus.CONFLICT.value(), ex.getMessage())
+        );
+    }
+
+    // 4. معالجة عدم وجود العنصر (404 Not Found)
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ErrorResponseDto> handleResourceNotFound(ResourceNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
+                new ErrorResponseDto(HttpStatus.NOT_FOUND.value(), ex.getMessage())
+        );
+    }
+
+    // 5. معالجة ResponseStatusException
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponseDto> handleResponseStatus(ResponseStatusException ex) {
-        ErrorResponseDto errorDto = new ErrorResponseDto(
-                ex.getStatusCode().value(),
-                ex.getReason()
+        return ResponseEntity.status(ex.getStatusCode()).body(
+                new ErrorResponseDto(ex.getStatusCode().value(), ex.getReason())
         );
-        return ResponseEntity.status(ex.getStatusCode()).body(errorDto);
     }
 
+    // 6. معالجة خطأ قراءة الـ JSON Payload (400 Bad Request)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponseDto> handleNotReadable(HttpMessageNotReadableException ex) {
-        ErrorResponseDto errorDto = new ErrorResponseDto(
-                HttpStatus.BAD_REQUEST.value(),
-                "Invalid value. Accepted values: USER, ADMIN"
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDto(HttpStatus.BAD_REQUEST.value(), "تنسيق البيانات المدخلة (JSON) غير صحيح.")
         );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorDto);
     }
-    // 3. معالجة نصوص بدلاً من أرقام في الـ URL مثل /tasks/abc (400 Bad Request)
+
+    // 7. معالجة اختلاف نوع البيانات في الـ URL مثل /tasks/abc (400 Bad Request)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponseDto> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        ErrorResponseDto response = new ErrorResponseDto(
-                HttpStatus.BAD_REQUEST.value(), ex.getMessage()
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(
+                new ErrorResponseDto(HttpStatus.BAD_REQUEST.value(), "نوع المعامل في الرابط غير صحيح: " + ex.getName())
         );
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
     }
 
-    // 🟢 4. [جديد] معالجة منع الوصول بسبب عدم وجود الصلاحيات الكافية (403 Forbidden)
+    // 8. معالجة عدم وجود الصلاحيات الكافية (403 Forbidden)
     @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponseDto> handleAccessDeniedException(AccessDeniedException ex) {
-        ErrorResponseDto response = new ErrorResponseDto(
-                HttpStatus.FORBIDDEN.value(),
-                "عفواً، ليس لديك الصلاحية الكافية للوصول لهذا المورد (ADMIN only)."
+    public ResponseEntity<ErrorResponseDto> handleAccessDenied(AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                new ErrorResponseDto(HttpStatus.FORBIDDEN.value(), "عفواً، ليس لديك الصلاحية الكافية للوصول لهذا المورد.")
         );
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
-    // 🟢 5. [جديد] معالجة فشل تسجيل الدخول أو التوكن غير المعتمد (401 Unauthorized)
+    // 9. معالجة فشل تسجيل الدخول أو التوكن غير المعتمد (401 Unauthorized)
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<ErrorResponseDto> handleAuthenticationException(AuthenticationException ex) {
-        ErrorResponseDto response =new ErrorResponseDto(
-                HttpStatus.UNAUTHORIZED.value(),
-                "فشل التحقق من الهوية: اسم المستخدم أو كلمة المرور غير صحيحة."
+    public ResponseEntity<ErrorResponseDto> handleAuthentication(AuthenticationException ex) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
+                new ErrorResponseDto(HttpStatus.UNAUTHORIZED.value(), "فشل التحقق من الهوية: اسم المستخدم أو كلمة المرور غير صحيحة.")
         );
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
     }
 
-    // 🟢 6. [جديد] معالجة تكرار البيانات الفريدة في الداتابيز كالإيميل المكرر (409 Conflict)
+    // 10. معالجة تكرار القيود الفريدة في الداتابيز كالإيميل المكرر (409 Conflict)
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponseDto> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
-        ErrorResponseDto response = new ErrorResponseDto(
-                HttpStatus.CONFLICT.value(),
-                "هذه البيانات مسجلة بالفعل في النظام (مثل اسم المستخدم أو الإيميل)."
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                new ErrorResponseDto(HttpStatus.CONFLICT.value(), "هذه البيانات مسجلة بالفعل في النظام.")
         );
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
 
-
-    // 7. حائط الدفاع الأخير لأي خطأ غريب غير متوقع (500 Internal Server Error)
+    // 11. حائط الدفاع الأخير لأي خطأ غير متوقع (500 Internal Server Error)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponseDto> handleGlobalException(Exception ex) {
-        ErrorResponseDto response = new ErrorResponseDto(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "An unexpected error occurred: " + ex.getMessage()
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(
+                new ErrorResponseDto(HttpStatus.INTERNAL_SERVER_ERROR.value(), "حدث خطأ غير متوقع في السيرفر: " + ex.getMessage())
         );
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 }

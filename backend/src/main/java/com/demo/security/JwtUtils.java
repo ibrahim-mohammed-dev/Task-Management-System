@@ -25,7 +25,7 @@ public class JwtUtils {
         return Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    // 1. توليد Token باسم المستخدم
+    // 1. توليد Token باسم المستخدم والمجموعات والصلاحيات
     public String generateToken(User user) {
         // استخراج الصلاحيات
         List<String> permissions = user.getAuthorities().stream()
