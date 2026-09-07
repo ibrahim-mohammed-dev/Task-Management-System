@@ -1,5 +1,6 @@
 package com.demo.service;
 
+import com.demo.dto.AuthResponseDto;
 import com.demo.dto.LoginRequestDto;
 import com.demo.dto.RegisterRequestDto;
 import com.demo.model.Group;
@@ -45,6 +46,9 @@ class AuthServiceTest {
 
     @Mock
     private JwtUtils jwtUtils;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private AuthService authService;
@@ -130,8 +134,8 @@ class AuthServiceTest {
     class Login {
 
         @Test
-        @DisplayName("Happy Path: يعمل Authenticate ويرجع JWT Token صحيح لبيانات صحيحة")
-        void login_shouldReturnJwtToken_whenCredentialsAreValid() {
+        @DisplayName("Happy Path: يعمل Authenticate ويرجع AuthResponseDto يحتوي على JWT و Refresh Token")
+        void login_shouldReturnAuthResponseDto_whenCredentialsAreValid() {
             // Arrange
             LoginRequestDto dto = mock(LoginRequestDto.class);
             when(dto.username()).thenReturn(USERNAME);
@@ -144,19 +148,24 @@ class AuthServiceTest {
                     .thenReturn(authentication);
 
             when(jwtUtils.generateToken(mockUser)).thenReturn("mocked-jwt-token");
+            when(refreshTokenService.createRefreshToken(mockUser)).thenReturn("mocked-refresh-token");
 
             // Act
-            String token = authService.login(dto);
+            AuthResponseDto response = authService.login(dto);
 
             // Assert
-            assertThat(token).isEqualTo("mocked-jwt-token");
+            assertThat(response).isNotNull();
+            assertThat(response.getToken()).isEqualTo("mocked-jwt-token");
+            assertThat(response.getRefreshToken()).isEqualTo("mocked-refresh-token");
+
             verify(authenticationManager, times(1))
                     .authenticate(any(UsernamePasswordAuthenticationToken.class));
             verify(jwtUtils, times(1)).generateToken(mockUser);
+            verify(refreshTokenService, times(1)).createRefreshToken(mockUser);
         }
 
         @Test
-        @DisplayName("Business Rule: يرمي Exception ولا يولّد Token لو بيانات الدخول غلط")
+        @DisplayName("Business Rule: يرمي Exception ولا يولّد Tokens لو بيانات الدخول غلط")
         void login_shouldThrowException_whenCredentialsAreInvalid() {
             // Arrange
             LoginRequestDto dto = mock(LoginRequestDto.class);
@@ -171,6 +180,7 @@ class AuthServiceTest {
                     .isInstanceOf(BadCredentialsException.class);
 
             verify(jwtUtils, never()).generateToken(any());
+            verify(refreshTokenService, never()).createRefreshToken(any());
         }
     }
 }

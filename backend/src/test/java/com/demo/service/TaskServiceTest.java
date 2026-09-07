@@ -29,14 +29,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 
-/**
- * عزل تام: لا يوجد @SpringBootTest ولا اتصال حقيقي بقاعدة بيانات.
- * كل الـ Dependencies (Repositories / Mapper) تم عمل Mock لها بالكامل.
- *
- * ملاحظة/افتراض: افترضت أن Task و User عندهم Default Constructor + Setters عادية،
- * وأن getId() موجودة على User. لو الـ Entities عندك مختلفة (مثلاً Builder pattern)
- * عدّل فقط أسطر بناء الكائنات (Arrange) بدون المساس بمنطق الـ Test.
- */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("TaskService Unit Tests")
 class TaskServiceTest {
@@ -62,8 +54,10 @@ class TaskServiceTest {
 
     @BeforeEach
     void setUp() {
-        currentUser = new User();
+        currentUser = new User("ahmed", "ahmed@test.com", "password");
         currentUser.setId(USER_ID);
+
+        lenient().when(userRepository.findByUsername("ahmed")).thenReturn(currentUser);
 
         task = new Task();
         task.setId(TASK_ID);
@@ -87,7 +81,6 @@ class TaskServiceTest {
         void createTask_shouldSaveAndReturnDto_whenUserExists() {
             // Arrange
             TaskRequestDto requestDto = new TaskRequestDto("New Task", "New Description");
-            when(userRepository.findById(USER_ID)).thenReturn(Optional.of(currentUser));
             when(taskMapper.toEntity(requestDto)).thenReturn(task);
             when(taskRepository.save(task)).thenReturn(task);
             when(taskMapper.toResponseDto(task)).thenReturn(taskResponseDto);
@@ -98,9 +91,9 @@ class TaskServiceTest {
             // Assert
             assertThat(result).isNotNull();
             assertThat(result).isEqualTo(taskResponseDto);
-            assertThat(task.getUser()).isEqualTo(currentUser); // تأكيد الربط بالمالك
+            assertThat(task.getUser()).isEqualTo(currentUser);
             verify(taskRepository, times(1)).save(task);
-            verify(userRepository, times(1)).findById(USER_ID);
+            verify(userRepository, times(1)).findByUsername("ahmed");
         }
 
         @Test
@@ -108,7 +101,7 @@ class TaskServiceTest {
         void createTask_shouldThrowException_whenUserNotFound() {
             // Arrange
             TaskRequestDto requestDto = new TaskRequestDto("New Task", "New Description");
-            when(userRepository.findById(USER_ID)).thenReturn(Optional.empty());
+            when(userRepository.findByUsername("ahmed")).thenReturn(null);
 
             // Act & Assert
             assertThatThrownBy(() -> taskService.createTask(requestDto, currentUser))

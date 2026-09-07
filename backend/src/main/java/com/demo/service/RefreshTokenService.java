@@ -1,8 +1,6 @@
 package com.demo.service;
 
 import com.demo.dto.AuthResponseDto;
-import com.demo.dto.TokensResponseDto;
-import com.demo.exception.ResourceNotFoundException;
 import com.demo.exception.TokenRefreshException;
 import com.demo.model.RefreshToken;
 import com.demo.model.User;
@@ -17,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.UUID;
 
@@ -28,8 +25,8 @@ public class RefreshTokenService
 
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtUtils jwtUtils;
-    @Value("${app.jwt.expiration-refresh-ms}")
-    private int refreshExpirationMs;
+    @Value("${app.jwt.refresh-expiration-ms}")
+    private long refreshExpirationMs;
 
     //helper method for hashing the token
     private String hashToken(String rawtoken)
@@ -46,6 +43,8 @@ public class RefreshTokenService
     @Transactional
     public String createRefreshToken(User user)
     {
+        refreshTokenRepository.deleteByUser(user);
+        refreshTokenRepository.flush();
         String rawToken = UUID.randomUUID().toString();
         String hashedToken =hashToken(rawToken);
         RefreshToken refreshToken = RefreshToken.create(user, hashedToken, refreshExpirationMs);

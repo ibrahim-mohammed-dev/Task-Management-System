@@ -5,9 +5,11 @@ import com.demo.model.Permission;
 import com.demo.model.User;
 import com.demo.repository.GroupRepository;
 import com.demo.repository.PermissionRepository;
+import com.demo.repository.RefreshTokenRepository;
 import com.demo.repository.TaskRepository;
 import com.demo.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,17 +20,14 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.util.List;
 import java.util.Set;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @ActiveProfiles("test")
-@Transactional
 public abstract class BaseIntegrationTest {
 
     protected static final String USER_USERNAME  = "testuser";
@@ -41,17 +40,27 @@ public abstract class BaseIntegrationTest {
 
     @Autowired private WebApplicationContext webApplicationContext;
     protected ObjectMapper objectMapper = new ObjectMapper();
-    @Autowired protected UserRepository      userRepository;
-    @Autowired protected TaskRepository      taskRepository;
-    @Autowired protected GroupRepository     groupRepository;
-    @Autowired protected PermissionRepository permissionRepository;
-    @Autowired protected PasswordEncoder     passwordEncoder;
+    @Autowired protected UserRepository        userRepository;
+    @Autowired protected TaskRepository        taskRepository;
+    @Autowired protected GroupRepository       groupRepository;
+    @Autowired protected PermissionRepository  permissionRepository;
+    @Autowired protected RefreshTokenRepository refreshTokenRepository;
+    @Autowired protected PasswordEncoder       passwordEncoder;
 
     protected MockMvc mockMvc;
     protected User    savedUser;
     protected User    savedAdmin;
     protected String  userToken;
     protected String  adminToken;
+
+    @AfterEach
+    void tearDown() {
+        refreshTokenRepository.deleteAll();
+        taskRepository.deleteAll();
+        groupRepository.deleteAll();   // يحذف user_groups و group_permissions تلقائياً (owning side)
+        userRepository.deleteAll();
+        permissionRepository.deleteAll();
+    }
 
     @BeforeEach
     void setUpAll() throws Exception {
@@ -83,21 +92,23 @@ public abstract class BaseIntegrationTest {
         userGroup.getPermissions().addAll(Set.of(p5, p6, p7, p8, p9));
         groupRepository.save(userGroup);
 
-        // 4. إنشاء المستخدم العادي وربطه بـ USERS Group
+        // 4. إنشاء المستخدم العادي وربطه بـ USERS Group (owning side)
         User user = new User();
         user.setUsername(USER_USERNAME);
         user.setEmail(USER_EMAIL);
         user.setPassword(passwordEncoder.encode(USER_PASSWORD));
-        user.getGroups().add(userGroup);
         savedUser = userRepository.save(user);
+        userGroup.getUsers().add(savedUser);
+        groupRepository.save(userGroup);
 
-        // 5. إنشاء المستخدم المشرف وربطه بـ ADMINS Group
+        // 5. إنشاء المستخدم المشرف وربطه بـ ADMINS Group (owning side)
         User admin = new User();
         admin.setUsername(ADMIN_USERNAME);
         admin.setEmail(ADMIN_EMAIL);
         admin.setPassword(passwordEncoder.encode(ADMIN_PASSWORD));
-        admin.getGroups().add(adminGroup);
         savedAdmin = userRepository.save(admin);
+        adminGroup.getUsers().add(savedAdmin);
+        groupRepository.save(adminGroup);
 
         // 6. استخراج الـ JWT Tokens لكل منهما لتستخدم في الـ Tests
         userToken  = fetchToken(USER_USERNAME,  USER_PASSWORD);
@@ -125,7 +136,12 @@ public abstract class BaseIntegrationTest {
                                 .content(loginJson))
                 .andReturn();
 
-        return result.getResponse().getContentAsString();
+        String response = result.getResponse().getContentAsString();
+        try {
+            return objectMapper.readTree(response).get("token").asText();
+        } catch (Exception e) {
+            return response;
+        }
     }
 
     protected String bearerToken(String token) {
