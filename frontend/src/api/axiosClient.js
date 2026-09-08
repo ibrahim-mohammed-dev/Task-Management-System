@@ -6,6 +6,21 @@ const axiosClient = axios.create({
   baseURL: BASE_URL,
 });
 
+// Flag and queue for managing concurrent refresh requests
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 // Attach the JWT to every outgoing request, if we have one.
 axiosClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -15,19 +30,74 @@ axiosClient.interceptors.request.use((config) => {
   return config;
 });
 
-// If the backend says our token is no good anymore, clear it and
-// bounce back to the login page.
+// Response interceptor to automatically handle 401 Unauthorized using refresh token
 axiosClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response && error.response.status === 401) {
-      localStorage.removeItem("token");
-      if (window.location.pathname !== "/login") {
-        window.location.href = "/login";
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !originalRequest.url?.includes("/api/auth/login") &&
+      !originalRequest.url?.includes("/api/auth/refresh")
+    ) {
+      const refreshToken = localStorage.getItem("refreshToken");
+
+      if (refreshToken) {
+        if (isRefreshing) {
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((newToken) => {
+              originalRequest.headers.Authorization = `Bearer ${newToken}`;
+              return axiosClient(originalRequest);
+            })
+            .catch((err) => Promise.reject(err));
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          const res = await axios.post(`${BASE_URL}/api/auth/refresh`, {
+            refreshToken,
+          });
+
+          const { token: newToken, refreshToken: newRefreshToken } = res.data;
+          localStorage.setItem("token", newToken);
+          if (newRefreshToken) {
+            localStorage.setItem("refreshToken", newRefreshToken);
+          }
+
+          processQueue(null, newToken);
+
+          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+          return axiosClient(originalRequest);
+        } catch (refreshErr) {
+          processQueue(refreshErr, null);
+          localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
+          if (window.location.pathname !== "/login") {
+            window.location.href = "/login";
+          }
+          return Promise.reject(refreshErr);
+        } finally {
+          isRefreshing = false;
+        }
+      } else {
+        localStorage.removeItem("token");
+        localStorage.removeItem("refreshToken");
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login";
+        }
       }
     }
+
     return Promise.reject(error);
   }
 );
 
 export default axiosClient;
+
