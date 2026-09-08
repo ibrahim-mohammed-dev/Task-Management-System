@@ -15,4 +15,5 @@ spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
 
 # JWT Security Configuration
 jwt.secret=YOUR_JWT_SECRET_KEY_HERE
-jwt.expiration=86400000
+jwt.expiration=300000
+app.jwt.refresh-expiration-ms=604800000

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useMemo } from "react";
-import { loginUser, registerUser } from "../api/authApi";
+import { loginUser, registerUser, logoutUser, refreshTokenUser } from "../api/authApi";
 import { getCurrentUser } from "../api/userApi";
 import { getAllUsers } from "../api/adminApi";
 import { decodeToken, isTokenExpired } from "../utils/jwt";
@@ -50,14 +50,43 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      const decoded = decodeToken(token);
+      let activeToken = token;
+      const decoded = decodeToken(activeToken);
+
       if (!decoded || isTokenExpired(decoded)) {
-        localStorage.removeItem("token");
-        setToken(null);
-        setUser(null);
-        setIsAdmin(false);
-        setLoading(false);
-        return;
+        const storedRefreshToken = localStorage.getItem("refreshToken");
+        if (storedRefreshToken) {
+          try {
+            const refreshRes = await refreshTokenUser(storedRefreshToken);
+            const { token: newToken, refreshToken: newRefreshToken } = refreshRes.data;
+            localStorage.setItem("token", newToken);
+            if (newRefreshToken) {
+              localStorage.setItem("refreshToken", newRefreshToken);
+            }
+            activeToken = newToken;
+            if (!cancelled) setToken(newToken);
+          } catch {
+            localStorage.removeItem("token");
+            localStorage.removeItem("refreshToken");
+            if (!cancelled) {
+              setToken(null);
+              setUser(null);
+              setIsAdmin(false);
+              setLoading(false);
+            }
+            return;
+          }
+        } else {
+          localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
+          if (!cancelled) {
+            setToken(null);
+            setUser(null);
+            setIsAdmin(false);
+            setLoading(false);
+          }
+          return;
+        }
       }
 
       try {
@@ -85,6 +114,7 @@ export function AuthProvider({ children }) {
       } catch (err) {
         if (!cancelled) {
           localStorage.removeItem("token");
+          localStorage.removeItem("refreshToken");
           setToken(null);
           setUser(null);
           setIsAdmin(false);
@@ -104,8 +134,11 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     const response = await loginUser(credentials);
-    const newToken = response.data;
+    const { token: newToken, refreshToken: newRefreshToken } = response.data;
     localStorage.setItem("token", newToken);
+    if (newRefreshToken) {
+      localStorage.setItem("refreshToken", newRefreshToken);
+    }
     setToken(newToken);
   };
 
@@ -113,12 +146,20 @@ export function AuthProvider({ children }) {
     await registerUser(data);
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setToken(null);
-    setUser(null);
-    setIsAdmin(false);
+  const logout = async () => {
+    try {
+      await logoutUser();
+    } catch {
+      // Ignore network errors or expired sessions on logout
+    } finally {
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      setToken(null);
+      setUser(null);
+      setIsAdmin(false);
+    }
   };
+
 
   return (
     <AuthContext.Provider
