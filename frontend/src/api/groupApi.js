@@ -20,3 +20,9 @@ export const removeUserFromGroup = (groupId, userId) =>
 
 export const addPermissionToGroup = (groupId, perId) =>
   axiosClient.post(`/api/groups/${groupId}/permission/${perId}`);
+
+export const deleteGroup = (groupId) =>
+  axiosClient.delete(`/api/groups/${groupId}`);
+
+export const deletePermission = (permissionId) =>
+  axiosClient.delete(`/api/groups/permissions/${permissionId}`);

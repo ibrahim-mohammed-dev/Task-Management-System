@@ -7,7 +7,7 @@ export default function AdminRoute() {
   if (loading) return null;
   if (!token) return <Navigate to="/login" replace />;
 
-  const isAllowed = isAdmin || hasPermission("MANAGE_GROUPS") || hasPermission("VIEW_ALL_USERS");
+  const isAllowed = isAdmin || hasPermission("MANAGE_USERS") || hasPermission("MANAGE_PERMISSIONS");
 
   return isAllowed ? (
     <Outlet />

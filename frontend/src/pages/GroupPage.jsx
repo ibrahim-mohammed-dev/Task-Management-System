@@ -7,6 +7,8 @@ import {
   addPermissionToGroup,
   getAllGroups,
   getAllPermissions,
+  deleteGroup,
+  deletePermission,
 } from "../api/groupApi";
 import { getAllUsers } from "../api/adminApi";
 
@@ -139,6 +141,30 @@ export default function GroupsPage() {
     }
   };
 
+  const handleDeleteGroup = async (groupId, groupName) => {
+    if (!window.confirm(`Are you sure you want to delete group "${groupName}"?`)) return;
+    clearMessages();
+    try {
+      await deleteGroup(groupId);
+      setSuccessMessage(`Group "${groupName}" deleted successfully!`);
+      loadData();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete group.");
+    }
+  };
+
+  const handleDeletePermission = async (permId, permName) => {
+    if (!window.confirm(`Are you sure you want to delete permission "${permName}"?`)) return;
+    clearMessages();
+    try {
+      await deletePermission(permId);
+      setSuccessMessage(`Permission "${permName}" deleted successfully!`);
+      loadData();
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete permission.");
+    }
+  };
+
   return (
     <div className="page">
       <div className="page-header">
@@ -176,7 +202,7 @@ export default function GroupsPage() {
             <form onSubmit={handleCreatePermission} className="inline-form">
               <input
                 type="text"
-                placeholder="Permission Name (e.g. EDIT_PROJECTS)"
+                placeholder="Permission Name (e.g. READ_TASK, WRITE_TASK)"
                 value={newPermissionName}
                 onChange={(e) => setNewPermissionName(e.target.value)}
                 required
@@ -299,6 +325,7 @@ export default function GroupsPage() {
                     <tr>
                       <th>ID</th>
                       <th>Group Name</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -307,6 +334,14 @@ export default function GroupsPage() {
                         <td>{g.id}</td>
                         <td>
                           <span className="badge">{g.name}</span>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-small btn-danger"
+                            onClick={() => handleDeleteGroup(g.id, g.name)}
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -327,6 +362,7 @@ export default function GroupsPage() {
                     <tr>
                       <th>ID</th>
                       <th>Permission Name</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -335,6 +371,14 @@ export default function GroupsPage() {
                         <td>{p.id}</td>
                         <td>
                           <span className="badge">{p.name}</span>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-small btn-danger"
+                            onClick={() => handleDeletePermission(p.id, p.name)}
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
