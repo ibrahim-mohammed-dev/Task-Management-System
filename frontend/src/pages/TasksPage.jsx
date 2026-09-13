@@ -15,7 +15,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const canCreate = hasPermission("CREATE_TASK");
+  const canCreate = hasPermission("WRITE_TASK");
 
   const loadTasks = async (pageNo = 0) => {
     setLoading(true);
@@ -74,7 +74,7 @@ export default function TasksPage() {
         <TaskForm onSubmit={handleCreate} onCancel={() => setShowForm(false)} />
       )}
 
-      {editingTask && hasPermission("EDIT_TASK") && (
+      {editingTask && hasPermission("WRITE_TASK") && (
         <TaskForm
           initialData={editingTask}
           onSubmit={handleUpdate}

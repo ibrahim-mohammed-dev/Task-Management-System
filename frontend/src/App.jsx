@@ -21,8 +21,8 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
 
-            {/* Regular authenticated users with VIEW_TASKS permission */}
-            <Route element={<PrivateRoute requiredPermission="VIEW_TASKS" />}>
+            {/* Regular authenticated users with READ_TASK permission */}
+            <Route element={<PrivateRoute requiredPermission="READ_TASK" />}>
               <Route path="/tasks" element={<TasksPage />} />
             </Route>
 

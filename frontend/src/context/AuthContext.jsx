@@ -29,7 +29,10 @@ export function AuthProvider({ children }) {
   // Helper method to check if current user has a specific permission
   const hasPermission = (permissionName) => {
     if (!permissionName) return true;
-    return permissions.includes(permissionName);
+    return (
+      permissions.includes("GROUP_SUPER_ADMIN") ||
+      permissions.includes(permissionName)
+    );
   };
 
   // Helper method to check if current user belongs to a specific group
@@ -95,9 +98,15 @@ export function AuthProvider({ children }) {
 
         // Determine if user has admin access via token claims (groups/permissions) or admin API check
         const isUserAdmin =
-          groups.some((g) => g.toUpperCase() === "ADMIN" || g.toUpperCase() === "ADMINS") ||
-          permissions.includes("MANAGE_GROUPS") ||
-          permissions.includes("VIEW_ALL_USERS");
+          groups.some(
+            (g) =>
+              g.toUpperCase() === "SUPER_ADMIN" ||
+              g.toUpperCase() === "ADMIN" ||
+              g.toUpperCase() === "ADMINS"
+          ) ||
+          permissions.includes("GROUP_SUPER_ADMIN") ||
+          permissions.includes("MANAGE_USERS") ||
+          permissions.includes("MANAGE_PERMISSIONS");
 
         if (!cancelled) {
           if (isUserAdmin) {

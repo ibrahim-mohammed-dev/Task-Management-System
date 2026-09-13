@@ -3,8 +3,8 @@ import { useAuth } from "../context/AuthContext";
 export default function TaskItem({ task, onToggle, onEdit, onDelete }) {
   const { hasPermission } = useAuth();
 
-  const canEdit = hasPermission("EDIT_TASK");
-  const canDelete = hasPermission("DELETE_TASK");
+  const canEdit = hasPermission("WRITE_TASK");
+  const canDelete = hasPermission("WRITE_TASK");
 
   return (
     <div className={`card task-item ${task.completed ? "task-item-done" : ""}`}>
