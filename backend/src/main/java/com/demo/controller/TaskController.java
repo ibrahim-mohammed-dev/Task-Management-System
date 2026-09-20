@@ -2,7 +2,7 @@ package com.demo.controller;
 
 import com.demo.dto.TaskRequestDto;
 import com.demo.dto.TaskResponseDto;
-import com.demo.model.User;
+import com.demo.security.AppPermission;
 import com.demo.service.TaskService;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
@@ -12,6 +12,8 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+
+import static com.demo.security.AppPermission.Names.*;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -23,9 +25,8 @@ public class TaskController {
         this.taskService = taskService;
     }
 
-    // 1. إنشاء مهمة جديدة
     @PostMapping
-    @PreAuthorize("hasAuthority('CREATE_TASK')")
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + WRITE_TASK + "')")
     public ResponseEntity<TaskResponseDto> createTask(
             @Valid @RequestBody TaskRequestDto taskRequestDto,
             @AuthenticationPrincipal UserDetails currentUser) {
@@ -34,24 +35,20 @@ public class TaskController {
         return new ResponseEntity<>(createdTask, HttpStatus.CREATED);
     }
 
-
-    // 2. جلب جميع مهام المستخدم الحالي (مع Pagination وترتيب)
-    @PreAuthorize("hasAuthority('VIEW_TASKS')")
     @GetMapping
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + READ_TASK + "')")
     public ResponseEntity<Page<TaskResponseDto>> getAllTasks(
             @AuthenticationPrincipal UserDetails currentUser,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "0")   int page,
+            @RequestParam(defaultValue = "10")  int size,
+            @RequestParam(defaultValue = "id")  String sortBy,
             @RequestParam(defaultValue = "asc") String sortDir) {
 
-        Page<TaskResponseDto> tasks = taskService.getAllTasksForCurrentUser(currentUser, page, size, sortBy, sortDir);
-        return ResponseEntity.ok(tasks);
+        return ResponseEntity.ok(taskService.getAllTasksForCurrentUser(currentUser, page, size, sortBy, sortDir));
     }
 
-    // 3. جلب مهمة واحدة بالـ ID
-    @PreAuthorize("hasAuthority('VIEW_TASKS')")
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + READ_TASK + "')")
     public ResponseEntity<TaskResponseDto> getTaskById(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails currentUser) {
@@ -59,9 +56,8 @@ public class TaskController {
         return ResponseEntity.ok(taskService.getTaskById(id, currentUser));
     }
 
-    // 4. تعديل عنوان ووصف المهمة (PUT)
-    @PreAuthorize("hasAuthority('EDIT_TASK')")
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + WRITE_TASK + "')")
     public ResponseEntity<TaskResponseDto> updateTask(
             @PathVariable Long id,
             @Valid @RequestBody TaskRequestDto taskRequestDto,
@@ -70,9 +66,8 @@ public class TaskController {
         return ResponseEntity.ok(taskService.updateTask(id, taskRequestDto, currentUser));
     }
 
-    // 5. تغيير حالة الإنجاز فقط (PATCH)
-    @PreAuthorize("hasAuthority('EDIT_TASK')")
     @PatchMapping("/{id}/toggle")
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + WRITE_TASK + "')")
     public ResponseEntity<TaskResponseDto> toggleTaskStatus(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails currentUser) {
@@ -80,9 +75,8 @@ public class TaskController {
         return ResponseEntity.ok(taskService.toggleTaskStatus(id, currentUser));
     }
 
-    // 6. حذف مهمة
-    @PreAuthorize("hasAuthority('DELETE_TASK')")
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + WRITE_TASK + "')")
     public ResponseEntity<Void> deleteTask(
             @PathVariable Long id,
             @AuthenticationPrincipal UserDetails currentUser) {
@@ -91,4 +85,3 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 }
-
