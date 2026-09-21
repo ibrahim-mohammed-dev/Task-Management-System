@@ -12,33 +12,34 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import static com.demo.security.AppPermission.Names.*;
+
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-public class AdminController
-{
+public class AdminController {
+
     private final AdminService adminService;
 
-    @PreAuthorize("hasAuthority('VIEW_ALL_USERS')")
     @GetMapping("/users")
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + MANAGE_USERS + "')")
     public ResponseEntity<Page<UserResponseDto>> showAllUsers(
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable)
-    {
+            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
         return ResponseEntity.ok(adminService.getAllUsers(pageable));
     }
 
-    @PreAuthorize("hasAuthority('VIEW_ALL_TASKS')")
     @GetMapping("/tasks")
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + MANAGE_USERS + "')")
     public ResponseEntity<Page<TaskResponseDto>> showAllTasks(
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable)
-    {
+            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
         return ResponseEntity.ok(adminService.getAllTasks(pageable));
     }
 
-    @PreAuthorize("hasAuthority('DELETE_ANY_TASK')")
     @DeleteMapping("/tasks/{id}")
-    public ResponseEntity<Void> deleteTask(@PathVariable Long id)
-    {
+    @PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + DELETE_TASK + "')")
+    public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
         adminService.deleteTask(id);
         return ResponseEntity.noContent().build();
     }

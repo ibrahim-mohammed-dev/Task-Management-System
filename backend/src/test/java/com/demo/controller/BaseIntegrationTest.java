@@ -8,6 +8,7 @@ import com.demo.repository.PermissionRepository;
 import com.demo.repository.RefreshTokenRepository;
 import com.demo.repository.TaskRepository;
 import com.demo.repository.UserRepository;
+import com.demo.security.AppPermission;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,26 +71,22 @@ public abstract class BaseIntegrationTest {
                 .build();
 
         // 1. إنشاء الصلاحيات الأساسية للنظام بأمان
-        Permission p1 = createPermission("VIEW_ALL_USERS");
-        Permission p2 = createPermission("VIEW_ALL_TASKS");
-        Permission p3 = createPermission("DELETE_ANY_TASK");
-        Permission p4 = createPermission("MANAGE_GROUPS");
-        Permission p5 = createPermission("CREATE_TASK");
-        Permission p6 = createPermission("VIEW_TASKS");
-        Permission p7 = createPermission("EDIT_TASK");
-        Permission p8 = createPermission("DELETE_TASK");
-        Permission p9 = createPermission("VIEW_PROFILE");
+        Permission pRead        = createPermission(AppPermission.Names.READ_TASK);
+        Permission pWrite       = createPermission(AppPermission.Names.WRITE_TASK);
+        Permission pDelete      = createPermission(AppPermission.Names.DELETE_TASK);
+        Permission pManageUsers = createPermission(AppPermission.Names.MANAGE_USERS);
+        Permission pManagePerms = createPermission(AppPermission.Names.MANAGE_PERMISSIONS);
 
         // 2. إنشاء مجموعة الأدمن وربطها بكل الصلاحيات
         Group adminGroup = new Group();
-        adminGroup.setName("ADMINS");
-        adminGroup.getPermissions().addAll(Set.of(p1, p2, p3, p4, p5, p6, p7, p8, p9));
+        adminGroup.setName("SUPER_ADMIN");
+        adminGroup.getPermissions().addAll(Set.of(pRead, pWrite, pDelete, pManageUsers, pManagePerms));
         groupRepository.save(adminGroup);
 
         // 3. إنشاء مجموعة المستخدمين العاديين وربطها بصلاحيات المهام والبروفايل
         Group userGroup = new Group();
         userGroup.setName("USERS");
-        userGroup.getPermissions().addAll(Set.of(p5, p6, p7, p8, p9));
+        userGroup.getPermissions().addAll(Set.of(pRead, pWrite));
         groupRepository.save(userGroup);
 
         // 4. إنشاء المستخدم العادي وربطه بـ USERS Group (owning side)

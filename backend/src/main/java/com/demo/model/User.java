@@ -10,7 +10,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.util.*;
-import java.util.stream.Collectors;
+
 
 @Entity
 @Table(name = "users")
@@ -54,11 +54,19 @@ public class User implements UserDetails {
             return Collections.emptyList();
         }
 
-        // المرور على المجموعات واستخراج الصلاحيات منها
-        return this.groups.stream()
-                .flatMap(group -> group.getPermissions().stream())
-                .map(permission -> new SimpleGrantedAuthority(permission.getName()))
-                .collect(Collectors.toSet());
+        Set<GrantedAuthority> authorities = new HashSet<>();
+
+        for (Group group : this.groups) {
+            // a) إضافة اسم المجموعة مسبوقاً بـ "GROUP_" (مثل GROUP_SUPER_ADMIN, GROUP_USERS)
+            authorities.add(new SimpleGrantedAuthority("GROUP_" + group.getName()));
+
+            // b) إضافة الصلاحيات الفردية المستخرجة من المجموعة (مثل READ_TASK, WRITE_TASK)
+            group.getPermissions().stream()
+                    .map(permission -> new SimpleGrantedAuthority(permission.getName()))
+                    .forEach(authorities::add);
+        }
+
+        return authorities;
     }
 
     @Override public String getPassword()               { return password; }

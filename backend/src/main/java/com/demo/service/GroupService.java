@@ -93,4 +93,23 @@ public class GroupService
         Page<Permission> permissions =permissionRepository.findAll(pageable);
         return permissions.map(permissionMapper :: toResponseDto);
     }
+
+    @Transactional
+    public void deleteGroup(Long groupId) {
+        Group group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new ResourceNotFoundException("Group not found with id: " + groupId));
+        group.getUsers().clear();
+        group.getPermissions().clear();
+        groupRepository.delete(group);
+    }
+
+    @Transactional
+    public void deletePermission(Long permissionId) {
+        Permission permission = permissionRepository.findById(permissionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Permission not found with id: " + permissionId));
+        for (Group group : permission.getGroups()) {
+            group.getPermissions().remove(permission);
+        }
+        permissionRepository.delete(permission);
+    }
 }

@@ -13,48 +13,73 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import static com.demo.security.AppPermission.Names.*;
+
 @RestController
 @RequestMapping("/api/groups")
 @AllArgsConstructor
-@PreAuthorize("hasAuthority('MANAGE_GROUPS')")
-public class GroupController
-{
+@PreAuthorize("hasAuthority('GROUP_SUPER_ADMIN') or hasAuthority('" + MANAGE_PERMISSIONS + "')")
+public class GroupController {
+
     private final GroupService groupService;
+
     @PostMapping
-    public ResponseEntity<GroupResponseDto> createGroup(@Valid @RequestBody GroupRequestDto dto)
-    {
+    public ResponseEntity<GroupResponseDto> createGroup(@Valid @RequestBody GroupRequestDto dto) {
         return ResponseEntity.status(HttpStatus.CREATED).body(groupService.createGroup(dto));
     }
+
     @PostMapping("/permissions")
-    public ResponseEntity<PermissionResponseDto> createPermission(@Valid @RequestBody PermissionRequestDto dto){
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(groupService.createPermission(dto));
+    public ResponseEntity<PermissionResponseDto> createPermission(@Valid @RequestBody PermissionRequestDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(groupService.createPermission(dto));
     }
+
     @PostMapping("/{groupId}/users/{userId}")
-    public ResponseEntity<GroupResponseDto> assignUserToGroup(@PathVariable Long userId,@PathVariable Long groupId){
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-                groupService.assignUserToGroup(userId, groupId)
-        );    }
+    public ResponseEntity<GroupResponseDto> assignUserToGroup(
+            @PathVariable Long userId, @PathVariable Long groupId) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(groupService.assignUserToGroup(userId, groupId));
+    }
+
     @DeleteMapping("/{groupId}/users/{userId}")
-    public ResponseEntity<Void> removeUserFromGroup(@PathVariable Long userId,@PathVariable Long groupId){
+    public ResponseEntity<Void> removeUserFromGroup(
+            @PathVariable Long userId, @PathVariable Long groupId) {
+
         groupService.removeUserFromGroup(userId, groupId);
         return ResponseEntity.noContent().build();
     }
+
     @PostMapping("/{groupId}/permission/{perId}")
-    public ResponseEntity<GroupResponseDto> addPermissionToGroup(@PathVariable Long perId,@PathVariable Long groupId){
-        return ResponseEntity.status(HttpStatus.CREATED).body(
-                groupService.addPermissionToGroup(perId, groupId)
-        );    }
+    public ResponseEntity<GroupResponseDto> addPermissionToGroup(
+            @PathVariable Long perId, @PathVariable Long groupId) {
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(groupService.addPermissionToGroup(perId, groupId));
+    }
+
     @GetMapping("/groups")
     public ResponseEntity<Page<GroupResponseDto>> showAllGroups(
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable)
-    {
+            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
         return ResponseEntity.ok(groupService.getAllGroups(pageable));
     }
+
     @GetMapping("/permissions")
     public ResponseEntity<Page<PermissionResponseDto>> showAllPermissions(
-            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable)
-    {
+            @PageableDefault(page = 0, size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+
         return ResponseEntity.ok(groupService.getAllpermissions(pageable));
+    }
+
+    @DeleteMapping("/{groupId}")
+    public ResponseEntity<Void> deleteGroup(@PathVariable Long groupId) {
+        groupService.deleteGroup(groupId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/permissions/{permissionId}")
+    public ResponseEntity<Void> deletePermission(@PathVariable Long permissionId) {
+        groupService.deletePermission(permissionId);
+        return ResponseEntity.noContent().build();
     }
 }

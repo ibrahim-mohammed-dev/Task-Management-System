@@ -3,9 +3,10 @@
 # ==========================================
 backend/target/
 backend/.mvn/wrapper/maven-wrapper.jar
-backend/src/main/resources/application.properties
 backend/*.log
 backend/*.env
+.env
+*.env
 
 ### STS & Eclipse ###
 backend/.apt_generated
@@ -29,6 +30,7 @@ frontend/npm-debug.log*
 frontend/yarn-debug.log*
 frontend/yarn-error.log*
 frontend/.env
+
 # ==========================================
 # IDEs & System Garbage (Global)
 # ==========================================
